@@ -1,0 +1,2 @@
+# Local Mapbox token — never commit (GitHub secret scanning will block pushes)
+config.secret.js

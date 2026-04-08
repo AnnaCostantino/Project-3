@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1ebe2c" />
+  <title>FuelFinder — Prototype</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="phone-shell" aria-label="Mobile app prototype">
+    <main id="app" class="app">
+      <!-- Splash -->
+      <section id="view-splash" class="view view--splash" aria-hidden="false">
+        <h1 class="splash__title">FuelFinder</h1>
+        <p class="splash__hint">Tap anywhere to continue</p>
+      </section>
+
+      <!-- Map (Mapbox GL + Search Box gas_station category) -->
+      <section id="view-map" class="view view--map is-hidden" aria-hidden="true">
+        <div id="mapbox-map" class="map__surface" aria-hidden="false"></div>
+        <p id="map-status" class="map__status" hidden></p>
+
+        <div class="map__fab-row">
+          <button type="button" class="fab" id="btn-filters" aria-label="Open filters">
+            <svg class="fab__icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>
+          </button>
+          <button type="button" class="fab" id="btn-profile" aria-label="Profile and reviews">
+            <svg class="fab__icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+          </button>
+        </div>
+
+        <div id="station-sheet" class="sheet sheet--station is-hidden" role="dialog" aria-modal="true" aria-labelledby="station-name">
+          <button type="button" class="sheet__close" id="close-station" aria-label="Close">×</button>
+          <h2 id="station-name" class="sheet__title">CITGO on Sevier Ave</h2>
+          <p class="sheet__price" id="station-price">$3.89/gal</p>
+          <p class="sheet__badge" id="station-badge">High for this area</p>
+          <p class="sheet__note" id="station-price-note" hidden></p>
+          <div class="stars" id="station-stars" aria-label="Rating"></div>
+          <button type="button" class="btn btn--primary" id="btn-directions">Get Directions</button>
+          <button type="button" class="link-more" id="btn-rate-from-sheet">Rate this station</button>
+          <p class="sheet__more"><span class="info-dot" aria-hidden="true">i</span> More Info</p>
+        </div>
+      </section>
+
+      <!-- Filters -->
+      <section id="view-filters" class="view view--filters is-hidden" aria-hidden="true">
+        <header class="view__header">
+          <button type="button" class="back-btn" data-back="map" aria-label="Back to map">←</button>
+          <h2 class="view__title">Filters</h2>
+        </header>
+        <div class="filter-scroll">
+          <ul class="filter-list">
+            <li class="filter-accordion">
+              <button type="button" class="filter-row" id="acc-btn-rewards" aria-expanded="false" aria-controls="acc-panel-rewards">
+                Rewards Programs <span class="chev" aria-hidden="true">⌄</span>
+              </button>
+              <div id="acc-panel-rewards" class="filter-dropdown" role="region" aria-labelledby="acc-btn-rewards" hidden>
+                <label class="radio-row"><input type="radio" name="rewards" checked /> Yes</label>
+              </div>
+            </li>
+            <li class="filter-accordion">
+              <button type="button" class="filter-row" id="acc-btn-pumps" aria-expanded="false" aria-controls="acc-panel-pumps">
+                Amount of Pumps <span class="chev" aria-hidden="true">⌄</span>
+              </button>
+              <div id="acc-panel-pumps" class="filter-dropdown" role="region" aria-labelledby="acc-btn-pumps" hidden>
+                <label class="radio-row"><input type="radio" name="pumps" /> 4–8</label>
+                <label class="radio-row"><input type="radio" name="pumps" checked /> 8–12</label>
+                <label class="radio-row"><input type="radio" name="pumps" /> 12–16</label>
+                <label class="radio-row"><input type="radio" name="pumps" /> 16+</label>
+              </div>
+            </li>
+            <li class="filter-accordion">
+              <button type="button" class="filter-row" id="acc-btn-loc" aria-expanded="false" aria-controls="acc-panel-loc">
+                Location <span class="chev" aria-hidden="true">⌄</span>
+              </button>
+              <div id="acc-panel-loc" class="filter-dropdown" role="region" aria-labelledby="acc-btn-loc" hidden>
+                <label class="radio-row"><input type="radio" name="loc" checked /> &lt;5 miles</label>
+                <label class="radio-row"><input type="radio" name="loc" /> 5–10 miles</label>
+                <label class="radio-row"><input type="radio" name="loc" /> &gt;10 miles</label>
+              </div>
+            </li>
+            <li class="filter-accordion">
+              <button type="button" class="filter-row" id="acc-btn-mem" aria-expanded="false" aria-controls="acc-panel-mem">
+                Membership <span class="chev" aria-hidden="true">⌄</span>
+              </button>
+              <div id="acc-panel-mem" class="filter-dropdown" role="region" aria-labelledby="acc-btn-mem" hidden>
+                <label class="radio-row"><input type="radio" name="mem" checked /> Not Required</label>
+              </div>
+            </li>
+          </ul>
+          <button type="button" class="btn btn--primary btn--block filter-search-btn" id="btn-search-filters">Search</button>
+        </div>
+        <div class="view__fab-row">
+          <button type="button" class="fab" data-back="map" aria-label="Map"><svg class="fab__icon" viewBox="0 0 24 24"><path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></button>
+          <button type="button" class="fab" id="fab-profile-from-filters" aria-label="Profile"><svg class="fab__icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></button>
+        </div>
+      </section>
+
+      <!-- My Reviews -->
+      <section id="view-reviews" class="view view--reviews is-hidden" aria-hidden="true">
+        <header class="view__header">
+          <button type="button" class="back-btn" data-back="map" aria-label="Back to map">←</button>
+          <h2 class="view__title">My Reviews</h2>
+        </header>
+        <div class="review-cards">
+          <article class="review-card" data-review-id="weigels">
+            <h3>Weigel’s on Chapman Hwy</h3>
+            <div class="stars stars--sm" data-rating="5"></div>
+            <button type="button" class="review-card__more">
+              <span class="info-dot" aria-hidden="true">i</span> More Info
+            </button>
+          </article>
+          <article class="review-card" data-review-id="gasngo">
+            <h3>Gas ‘N Go on Western Ave</h3>
+            <div class="stars stars--sm" data-rating="5"></div>
+            <button type="button" class="review-card__more">
+              <span class="info-dot" aria-hidden="true">i</span> More Info
+            </button>
+          </article>
+          <article class="review-card" data-review-id="citgo">
+            <h3>CitGo on Sevier Ave</h3>
+            <div class="stars stars--sm" data-rating="3"></div>
+            <button type="button" class="review-card__more">
+              <span class="info-dot" aria-hidden="true">i</span> More Info
+            </button>
+          </article>
+        </div>
+        <div class="view__fab-row">
+          <button type="button" class="fab" data-back="map" aria-label="Map"><svg class="fab__icon" viewBox="0 0 24 24"><path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></button>
+          <button type="button" class="fab" aria-label="Profile" disabled><svg class="fab__icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></button>
+        </div>
+      </section>
+
+      <!-- My review detail (modal) -->
+      <div id="review-detail-modal" class="modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="review-detail-title">
+        <div class="modal__backdrop" aria-hidden="true"></div>
+        <div class="modal__panel" id="review-detail-panel">
+          <button type="button" class="modal__close" id="review-detail-close" aria-label="Close">×</button>
+          <h3 id="review-detail-title" class="modal__title"></h3>
+          <p id="review-detail-date" class="modal__date"></p>
+          <div id="review-detail-stars" class="stars stars--sm" aria-label="Your overall rating"></div>
+          <div id="review-detail-scales" class="modal__scales" aria-label="Your scale ratings">
+            <div class="modal__scale-row">
+              <span class="modal__scale-label">Cleanliness</span>
+              <span class="modal__scale-value" id="review-detail-cleanliness"></span>
+            </div>
+            <div class="modal__scale-row">
+              <span class="modal__scale-label">Pump Availability</span>
+              <span class="modal__scale-value" id="review-detail-pump"></span>
+            </div>
+            <div class="modal__scale-row">
+              <span class="modal__scale-label">Safety</span>
+              <span class="modal__scale-value" id="review-detail-safety"></span>
+            </div>
+          </div>
+          <p id="review-detail-body" class="modal__body"></p>
+        </div>
+      </div>
+
+      <!-- Rate station -->
+      <section id="view-rate" class="view view--rate is-hidden" aria-hidden="true">
+        <div class="map__bg map__bg--dim" aria-hidden="true"></div>
+        <div class="rate-panel">
+          <h2 class="rate-panel__title">Rate this station!</h2>
+          <div class="rate-overall">
+            <span id="rate-overall-label" class="rate-field__label">Overall rating</span>
+            <div class="rate-star-row" id="rate-overall-stars" role="radiogroup" aria-labelledby="rate-overall-label">
+              <button type="button" class="rate-star-btn" data-value="1" aria-label="1 star">
+                <svg class="rate-star-btn__svg" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+              </button>
+              <button type="button" class="rate-star-btn" data-value="2" aria-label="2 stars">
+                <svg class="rate-star-btn__svg" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+              </button>
+              <button type="button" class="rate-star-btn" data-value="3" aria-label="3 stars">
+                <svg class="rate-star-btn__svg" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+              </button>
+              <button type="button" class="rate-star-btn" data-value="4" aria-label="4 stars">
+                <svg class="rate-star-btn__svg" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+              </button>
+              <button type="button" class="rate-star-btn" data-value="5" aria-label="5 stars">
+                <svg class="rate-star-btn__svg" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="rate-field">
+            <div class="rate-field__head">
+              <label class="rate-field__label" for="rate-clean">Cleanliness</label>
+              <span class="rate-field__value" id="rate-clean-display" aria-live="polite">4</span>
+            </div>
+            <div class="rate-slider-track">
+              <input type="range" min="1" max="5" value="4" class="rate-slider" id="rate-clean" aria-valuetext="4 out of 5" />
+              <div class="rate-slider-ticks" aria-hidden="true">
+                <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+              </div>
+            </div>
+          </div>
+          <div class="rate-field">
+            <div class="rate-field__head">
+              <label class="rate-field__label" for="rate-pump">Pump availability</label>
+              <span class="rate-field__value" id="rate-pump-display" aria-live="polite">4</span>
+            </div>
+            <div class="rate-slider-track">
+              <input type="range" min="1" max="5" value="4" class="rate-slider" id="rate-pump" aria-valuetext="4 out of 5" />
+              <div class="rate-slider-ticks" aria-hidden="true">
+                <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+              </div>
+            </div>
+          </div>
+          <div class="rate-field">
+            <div class="rate-field__head">
+              <label class="rate-field__label" for="rate-safe">Safety</label>
+              <span class="rate-field__value" id="rate-safe-display" aria-live="polite">4</span>
+            </div>
+            <div class="rate-slider-track">
+              <input type="range" min="1" max="5" value="4" class="rate-slider" id="rate-safe" aria-valuetext="4 out of 5" />
+              <div class="rate-slider-ticks" aria-hidden="true">
+                <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+              </div>
+            </div>
+          </div>
+          <label class="rate-field rate-field--comments">Comments: <textarea rows="2" placeholder="Optional notes" id="rate-comments"></textarea></label>
+          <div class="rate-panel__footer">
+            <button type="button" class="btn btn--primary btn--sm" id="btn-done-rate">Done</button>
+          </div>
+        </div>
+        <div class="view__fab-row view__fab-row--overlay">
+          <button type="button" class="fab" data-back="map" aria-label="Map"><svg class="fab__icon" viewBox="0 0 24 24"><path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></button>
+          <button type="button" class="fab" data-goto="reviews-from-rate" aria-label="Reviews"><svg class="fab__icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></button>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"></script>
+  <!-- config.secret.js is optional; copy from config.secret.example.js for your Mapbox token -->
+  <script src="config.js"></script>
+  <script src="config.secret.js"></script>
+  <script src="mapbox-map.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
