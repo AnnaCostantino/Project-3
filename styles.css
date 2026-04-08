@@ -920,6 +920,60 @@ body {
   z-index: 6;
 }
 
+/* Simple hover feedback for interactive controls */
+.btn,
+.fab,
+.back-btn,
+.filter-row,
+.link-more,
+.sheet__close,
+.review-card__more,
+.modal__close,
+.rate-star-btn,
+.map-marker {
+  transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease,
+    transform 0.12s ease, opacity 0.18s ease, border-color 0.18s ease;
+}
+
+@media (hover: hover) {
+  .btn:hover:not(:disabled) {
+    background: var(--green-dark);
+  }
+
+  .fab:hover:not(:disabled) {
+    background: var(--green-dark);
+    box-shadow: 0 6px 16px rgba(13, 152, 24, 0.5);
+    transform: translateY(-1px);
+  }
+
+  .back-btn:hover,
+  .sheet__close:hover,
+  .modal__close:hover {
+    background: rgba(0, 0, 0, 0.06);
+  }
+
+  .filter-row:hover {
+    border-color: var(--green-dark);
+    background: #f7fff8;
+  }
+
+  .link-more:hover,
+  .review-card__more:hover {
+    color: var(--green-dark);
+    text-decoration: underline;
+  }
+
+  .rate-star-btn:hover {
+    background: rgba(30, 190, 44, 0.12);
+    color: var(--green-dark);
+  }
+
+  .map-marker:hover {
+    transform: translate(-50%, -50%) scale(1.06);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+  }
+}
+
 @media (max-height: 620px) {
   .rate-panel {
     top: 12%;
