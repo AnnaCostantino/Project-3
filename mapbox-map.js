@@ -2,10 +2,13 @@
  * Mapbox GL JS map + Search Box API gas_station category (real POI locations).
  */
 (function () {
-  const CFG = window.FUEL_FINDER_CONFIG || {};
   let map = null;
   let mapMarkers = [];
   let mapReady = false;
+
+  function getConfig() {
+    return window.FUEL_FINDER_CONFIG || {};
+  }
 
   function haversineKm(lat1, lng1, lat2, lng2) {
     const R = 6371;
@@ -158,13 +161,14 @@
   }
 
   function initMapInternal() {
+    const CFG = getConfig();
     const token = (CFG.mapboxAccessToken || "").trim();
     const center = CFG.mapCenter || { lng: -83.9207, lat: 35.9606 };
     const zoom = CFG.mapZoom != null ? CFG.mapZoom : 11;
 
     if (!token) {
       showMapStatus(
-        "Add your Mapbox access token to config.js (see config.example.js)."
+        "Add your Mapbox access token to config.secret.js (copy config.secret.example.js)."
       );
       return;
     }
