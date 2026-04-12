@@ -167,8 +167,13 @@
     const zoom = CFG.mapZoom != null ? CFG.mapZoom : 11;
 
     if (!token) {
+      const onGitHubPages =
+        typeof location !== "undefined" &&
+        /\.github\.io$/i.test(location.hostname || "");
       showMapStatus(
-        "Add your Mapbox access token to config.secret.js (copy config.secret.example.js)."
+        onGitHubPages
+          ? "Mapbox token missing for this site. In the repo, add Actions secret MAPBOX_TOKEN and deploy via GitHub Pages (see .github/workflows/deploy-pages.yml)."
+          : "Add your Mapbox access token to config.secret.js (copy config.secret.example.js)."
       );
       return;
     }
