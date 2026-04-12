@@ -1,7 +1,12 @@
-# Builds a deploy bundle with config.secret.js so the map works on GitHub Pages.
-# 1. Repo → Settings → Secrets and variables → Actions → New repository secret:
-#    Name: MAPBOX_TOKEN   Value: your Mapbox public default token
-# 2. Repo → Settings → Pages → Build and deployment → Source: GitHub Actions
+# Deploys to GitHub Pages with the Mapbox token baked into config.js (reliable for CI).
+# config.secret.js is gitignored — a generated copy was easy to miss in the Pages bundle.
+#
+# Setup:
+# 1. Settings → Secrets and variables → Actions → New repository secret
+#    Name: MAPBOX_TOKEN   Value: your Mapbox public default token (paste trimmed, no quotes)
+# 2. Settings → Pages → Build and deployment → Source: GitHub Actions (not "Deploy from a branch")
+# 3. After the workflow succeeds, open the site URL from the workflow run (env: github-pages),
+#    usually https://<user>.github.io/<repo>/
 name: Deploy GitHub Pages
 
 on:
@@ -27,23 +32,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Write config.secret.js for deploy
+      - name: Inject Mapbox token into config.js
         env:
           MAPBOX_TOKEN: ${{ secrets.MAPBOX_TOKEN }}
         run: |
           node <<'NODE'
           const fs = require("fs");
-          const token = process.env.MAPBOX_TOKEN || "";
-          const body =
-            "(function () {\n" +
-            "  var base = window.FUEL_FINDER_CONFIG || {};\n" +
-            "  window.FUEL_FINDER_CONFIG = Object.assign({}, base, {\n" +
-            "    mapboxAccessToken: " +
-            JSON.stringify(token) +
-            ",\n" +
-            "  });\n" +
-            "})();\n";
-          fs.writeFileSync("config.secret.js", body);
+          const token = (process.env.MAPBOX_TOKEN || "").trim();
+          if (!token) {
+            console.error(
+              "::error::MAPBOX_TOKEN is empty. Add repository secret MAPBOX_TOKEN under Settings → Secrets and variables → Actions (exact name, no spaces)."
+            );
+            process.exit(1);
+          }
+          let src = fs.readFileSync("config.js", "utf8");
+          if (!/mapboxAccessToken:\s*""/.test(src)) {
+            console.error(
+              "::error::config.js must keep mapboxAccessToken: \"\" so CI can inject the token."
+            );
+            process.exit(1);
+          }
+          src = src.replace(
+            /mapboxAccessToken:\s*""/,
+            "mapboxAccessToken: " + JSON.stringify(token)
+          );
+          fs.writeFileSync("config.js", src);
           NODE
 
       - uses: actions/configure-pages@v5
@@ -53,4 +66,4 @@ jobs:
           path: .
 
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

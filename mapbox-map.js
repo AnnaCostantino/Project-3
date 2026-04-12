@@ -172,7 +172,7 @@
         /\.github\.io$/i.test(location.hostname || "");
       showMapStatus(
         onGitHubPages
-          ? "Mapbox token missing for this site. In the repo, add Actions secret MAPBOX_TOKEN and deploy via GitHub Pages (see .github/workflows/deploy-pages.yml)."
+          ? "Mapbox token missing on this deploy. Confirm Settings → Pages uses \"GitHub Actions\" (not a branch), add Actions secret MAPBOX_TOKEN (exact name), then re-run the Deploy GitHub Pages workflow."
           : "Add your Mapbox access token to config.secret.js (copy config.secret.example.js)."
       );
       return;
