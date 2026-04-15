@@ -102,6 +102,11 @@ body {
   position: absolute;
   inset: 0;
   z-index: 1;
+  transition: filter 180ms ease;
+}
+
+.map__surface--navigating {
+  filter: saturate(1.04) contrast(1.015);
 }
 
 .map__surface .mapboxgl-ctrl-top-right {
@@ -148,8 +153,29 @@ body {
   border-radius: 50%;
   cursor: pointer;
   padding: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow:
+    0 6px 12px rgba(0, 0, 0, 0.24),
+    inset 0 -5px 8px rgba(0, 0, 0, 0.22),
+    inset 0 2px 4px rgba(255, 255, 255, 0.35);
   z-index: 2;
+  overflow: hidden;
+}
+
+.map-marker::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 7px;
+  width: 18px;
+  height: 11px;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 255, 255, 0.85) 0%,
+    rgba(255, 255, 255, 0.4) 55%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  pointer-events: none;
 }
 
 .map-marker::after {
@@ -161,17 +187,23 @@ body {
 }
 
 .map-marker--green {
-  background: var(--map-green-fill);
+  background:
+    radial-gradient(circle at 32% 28%, #7ce286 0%, rgba(124, 226, 134, 0.65) 22%, rgba(124, 226, 134, 0) 48%),
+    linear-gradient(160deg, #2ccf3a 0%, #1ebe2c 58%, #0e8d18 100%);
   border: 2px solid var(--map-green-ring);
 }
 
 .map-marker--yellow {
-  background: var(--map-yellow-fill);
+  background:
+    radial-gradient(circle at 32% 28%, #ffe58a 0%, rgba(255, 229, 138, 0.64) 22%, rgba(255, 229, 138, 0) 48%),
+    linear-gradient(160deg, #ffd74a 0%, #f0c820 58%, #c9a400 100%);
   border: 2px solid var(--map-yellow-ring);
 }
 
 .map-marker--red {
-  background: var(--map-red-fill);
+  background:
+    radial-gradient(circle at 32% 28%, #ff8b87 0%, rgba(255, 139, 135, 0.62) 22%, rgba(255, 139, 135, 0) 48%),
+    linear-gradient(160deg, #f45a57 0%, #e53935 58%, #b71c1c 100%);
   border: 2px solid var(--map-red-ring);
 }
 
@@ -403,6 +435,22 @@ body {
   font-family: inherit;
 }
 
+.sheet__more-btn {
+  margin: 0.5rem auto 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  cursor: pointer;
+}
+
 .sheet__more {
   margin: 0.5rem 0 0;
   text-align: center;
@@ -483,7 +531,8 @@ body {
 }
 
 .view--filters,
-.view--reviews {
+.view--reviews,
+.view--station-info {
   padding-bottom: 0;
 }
 
@@ -542,6 +591,8 @@ body {
   padding: 0.35rem 0;
   font-size: 15px;
   cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .filter-search-btn {
@@ -561,6 +612,7 @@ body {
   border-radius: var(--radius-btn);
   padding: 0.65rem 0.85rem;
   margin-bottom: 0.65rem;
+  transition: background-color 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
 
 .review-card h3 {
@@ -586,6 +638,104 @@ body {
 
 .review-card__more:hover {
   text-decoration: underline;
+}
+
+/* Station details page */
+.station-info-scroll {
+  padding: 0 1rem 5rem;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.station-profile-card,
+.station-details-card {
+  border: 1px solid #ddd;
+  border-radius: var(--radius-card);
+  background: var(--white);
+  padding: 0.85rem;
+  margin-bottom: 0.65rem;
+}
+
+.station-profile-card__title {
+  margin: 0;
+  font-size: 16px;
+}
+
+.station-profile-card__price {
+  margin: 0.4rem 0 0.2rem;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--green-dark);
+}
+
+.station-profile-card__badge {
+  margin: 0;
+  font-size: 13px;
+}
+
+.station-details-card h3 {
+  margin: 0 0 0.6rem;
+  font-size: 14px;
+}
+
+.station-detail-grid {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.station-detail-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 0.35rem;
+}
+
+.station-detail-row__label {
+  color: #444;
+}
+
+.station-detail-row__value {
+  font-weight: 600;
+  color: var(--green-dark);
+}
+
+.station-community-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.community-review {
+  background: #f9f9f9;
+  border: 1px solid #ececec;
+  border-radius: var(--radius-btn);
+  padding: 0.6rem 0.65rem;
+}
+
+.community-review__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.community-review__author {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.community-review__stars {
+  margin: 0;
+  font-size: 12px;
+  color: #c08a00;
+  letter-spacing: 0.02em;
+}
+
+.community-review__body {
+  margin: 0.35rem 0 0;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 /* Review detail modal — absolute inside #app so overflow:hidden doesn’t clip/break fixed overlays */
@@ -776,24 +926,29 @@ body {
 /* Rate */
 .view--rate {
   background: transparent;
+  z-index: 40;
 }
 
 .map__bg--dim {
   opacity: 0.35;
 }
 
+.view--rate .map__bg {
+  display: none;
+}
+
 .rate-panel {
   position: absolute;
   left: 50%;
-  top: 22%;
-  transform: translateX(-50%);
+  top: 50%;
+  transform: translate(-50%, -50%);
   width: calc(100% - 2rem);
   max-width: 280px;
   background: var(--white);
   border: 1px solid #ccc;
   border-radius: var(--radius-card);
   padding: 1rem;
-  z-index: 5;
+  z-index: 50;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
 }
 
@@ -932,7 +1087,7 @@ body {
 .rate-star-btn,
 .map-marker {
   transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease,
-    transform 0.12s ease, opacity 0.18s ease, border-color 0.18s ease;
+    opacity 0.18s ease, border-color 0.18s ease;
 }
 
 @media (hover: hover) {
@@ -957,10 +1112,22 @@ body {
     background: #f7fff8;
   }
 
+  .radio-row:hover {
+    background: #f7fff8;
+    box-shadow: inset 0 0 0 1px rgba(13, 152, 24, 0.22);
+  }
+
   .link-more:hover,
-  .review-card__more:hover {
+.review-card__more:hover,
+.sheet__more-btn:hover {
     color: var(--green-dark);
     text-decoration: underline;
+  }
+
+  .review-card:hover {
+    background: #f7fff8;
+    border-color: rgba(13, 152, 24, 0.35);
+    box-shadow: inset 0 0 0 1px rgba(13, 152, 24, 0.22);
   }
 
   .rate-star-btn:hover {

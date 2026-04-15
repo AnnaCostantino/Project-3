@@ -43,7 +43,59 @@
           <div class="stars" id="station-stars" aria-label="Rating"></div>
           <button type="button" class="btn btn--primary" id="btn-directions">Get Directions</button>
           <button type="button" class="link-more" id="btn-rate-from-sheet">Rate this station</button>
-          <p class="sheet__more"><span class="info-dot" aria-hidden="true">i</span> More Info</p>
+          <button type="button" class="sheet__more-btn" id="btn-station-more-info">
+            <span class="info-dot" aria-hidden="true">i</span> More Info
+          </button>
+        </div>
+      </section>
+
+      <!-- Station details -->
+      <section id="view-station-info" class="view view--station-info is-hidden" aria-hidden="true">
+        <header class="view__header">
+          <button type="button" class="back-btn" data-back="map" aria-label="Back to map">←</button>
+          <h2 class="view__title">Station Details</h2>
+        </header>
+        <div class="station-info-scroll">
+          <article class="station-profile-card">
+            <h3 id="station-info-name" class="station-profile-card__title">CITGO on Sevier Ave</h3>
+            <p id="station-info-price" class="station-profile-card__price">$3.89/gal</p>
+            <p id="station-info-badge" class="station-profile-card__badge">High for this area</p>
+          </article>
+
+          <article class="station-details-card">
+            <h3>Filter Match Details</h3>
+            <div class="station-detail-grid">
+              <div class="station-detail-row">
+                <span class="station-detail-row__label">Rewards Programs</span>
+                <span id="station-info-rewards" class="station-detail-row__value">Yes</span>
+              </div>
+              <div class="station-detail-row">
+                <span class="station-detail-row__label">Amount of Pumps</span>
+                <span id="station-info-pumps" class="station-detail-row__value">8-12</span>
+              </div>
+              <div class="station-detail-row">
+                <span class="station-detail-row__label">Location</span>
+                <span id="station-info-location" class="station-detail-row__value">&lt;5 miles</span>
+              </div>
+              <div class="station-detail-row">
+                <span class="station-detail-row__label">Membership</span>
+                <span id="station-info-membership" class="station-detail-row__value">Not Required</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="station-details-card">
+            <h3>Community Reviews</h3>
+            <div class="station-detail-row">
+              <span class="station-detail-row__label">Average Community Rating</span>
+              <span id="station-info-average-rating" class="station-detail-row__value">4.5 / 5 (★★★★☆)</span>
+            </div>
+            <div id="station-info-reviews" class="station-community-list"></div>
+          </article>
+        </div>
+        <div class="view__fab-row">
+          <button type="button" class="fab" data-back="map" aria-label="Map"><svg class="fab__icon" viewBox="0 0 24 24"><path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></button>
+          <button type="button" class="fab" data-goto="reviews" aria-label="Profile"><svg class="fab__icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></button>
         </div>
       </section>
 

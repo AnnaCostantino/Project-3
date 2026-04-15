@@ -85,6 +85,63 @@ const STATIONS = {
   },
 };
 
+const STATION_DETAILS = {
+  citgo: {
+    rewards: "Yes",
+    pumps: "8-12",
+    location: "<5 miles",
+    membership: "Not Required",
+    reviews: [
+      {
+        author: "Alex M.",
+        stars: 3,
+        text: "Easy to access from Sevier Ave, but prices are usually higher than nearby options.",
+      },
+      {
+        author: "Priya S.",
+        stars: 2,
+        text: "Pumps worked fine, but the lot felt crowded at peak time and lighting could be better.",
+      },
+    ],
+  },
+  gasngo: {
+    rewards: "Yes",
+    pumps: "12-16",
+    location: "5-10 miles",
+    membership: "Not Required",
+    reviews: [
+      {
+        author: "Darnell T.",
+        stars: 4,
+        text: "Solid pricing and I rarely wait long. Store staff was helpful when my receipt did not print.",
+      },
+      {
+        author: "Mia R.",
+        stars: 5,
+        text: "Clean station and consistent prices. Good stop when I am heading west.",
+      },
+    ],
+  },
+  weigels: {
+    rewards: "Yes",
+    pumps: "12-16",
+    location: "<5 miles",
+    membership: "Not Required",
+    reviews: [
+      {
+        author: "Jordan C.",
+        stars: 5,
+        text: "Usually the best value in this area, and pumps move quickly even during rush hour.",
+      },
+      {
+        author: "Sam L.",
+        stars: 4,
+        text: "Clean and well lit. Rewards discounts are noticeable if you fuel up often.",
+      },
+    ],
+  },
+};
+
 function $(sel, root = document) {
   return root.querySelector(sel);
 }
@@ -99,6 +156,83 @@ function showView(id) {
   if (id === "view-map" && window.FuelFinderMapbox) {
     window.FuelFinderMapbox.onViewShown();
   }
+}
+
+function openRateOverlay() {
+  const rateView = $("#view-rate");
+  if (!rateView) return;
+  rateView.classList.remove("is-hidden");
+  rateView.setAttribute("aria-hidden", "false");
+}
+
+function closeRateOverlay() {
+  const rateView = $("#view-rate");
+  if (!rateView) return;
+  rateView.classList.add("is-hidden");
+  rateView.setAttribute("aria-hidden", "true");
+}
+
+function inferStationKeyFromName(name = "") {
+  const normalized = String(name).toLowerCase();
+  if (normalized.includes("weigel")) return "weigels";
+  if (normalized.includes("gas")) return "gasngo";
+  if (normalized.includes("citgo")) return "citgo";
+  return "citgo";
+}
+
+function stationKeyFromSheet() {
+  const sheet = $("#station-sheet");
+  if (!sheet) return "citgo";
+  if (sheet.dataset.station && STATION_DETAILS[sheet.dataset.station]) {
+    return sheet.dataset.station;
+  }
+  return inferStationKeyFromName($("#station-name")?.textContent || "");
+}
+
+function starText(count) {
+  const safe = Math.max(0, Math.min(5, Number(count) || 0));
+  return `${"★".repeat(safe)}${"☆".repeat(5 - safe)}`;
+}
+
+function averageRatingText(reviews) {
+  if (!reviews || !reviews.length) return "0.0 / 5 (☆☆☆☆☆)";
+  const total = reviews.reduce((sum, review) => sum + (Number(review.stars) || 0), 0);
+  const avg = total / reviews.length;
+  const roundedToWhole = Math.max(0, Math.min(5, Math.round(avg)));
+  return `${avg.toFixed(1)} / 5 (${starText(roundedToWhole)})`;
+}
+
+function openStationInfoView() {
+  const key = stationKeyFromSheet();
+  const details = STATION_DETAILS[key] || STATION_DETAILS.citgo;
+
+  $("#station-info-name").textContent = $("#station-name")?.textContent || STATIONS[key].name;
+  $("#station-info-price").textContent = $("#station-price")?.textContent || STATIONS[key].price;
+  $("#station-info-badge").textContent = $("#station-badge")?.textContent || STATIONS[key].badge;
+
+  $("#station-info-rewards").textContent = details.rewards;
+  $("#station-info-pumps").textContent = details.pumps;
+  $("#station-info-location").textContent = details.location;
+  $("#station-info-membership").textContent = details.membership;
+  $("#station-info-average-rating").textContent = averageRatingText(details.reviews);
+
+  const reviewsEl = $("#station-info-reviews");
+  reviewsEl.innerHTML = "";
+  details.reviews.forEach((review) => {
+    const item = document.createElement("article");
+    item.className = "community-review";
+    item.innerHTML = `
+      <div class="community-review__head">
+        <p class="community-review__author">${review.author}</p>
+        <p class="community-review__stars" aria-label="${review.stars} out of 5 stars">${starText(review.stars)}</p>
+      </div>
+      <p class="community-review__body">${review.text}</p>
+    `;
+    reviewsEl.appendChild(item);
+  });
+
+  closeStationSheet();
+  showView("view-station-info");
 }
 
 function renderStars(container, count, max = 5) {
@@ -401,6 +535,7 @@ function init() {
     btn.addEventListener("click", () => {
       const g = btn.getAttribute("data-goto");
       if (g === "reviews-from-rate") showView("view-reviews");
+      if (g === "reviews") showView("view-reviews");
     });
   });
 
@@ -432,11 +567,22 @@ function init() {
 
   $("#btn-rate-from-sheet").addEventListener("click", () => {
     closeStationSheet();
-    showView("view-rate");
+    openRateOverlay();
   });
 
+  $("#btn-station-more-info").addEventListener("click", openStationInfoView);
+
   $("#btn-done-rate").addEventListener("click", () => {
-    showView("view-map");
+    closeRateOverlay();
+  });
+
+  $("#view-rate [data-back='map']")?.addEventListener("click", () => {
+    closeRateOverlay();
+  });
+
+  $("#view-rate [data-goto='reviews-from-rate']")?.addEventListener("click", () => {
+    closeRateOverlay();
+    showView("view-reviews");
   });
 }
 

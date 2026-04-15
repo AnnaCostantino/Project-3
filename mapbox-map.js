@@ -102,6 +102,114 @@
     mapMarkers = [];
   }
 
+  /**
+   * Apply a soft light-green treatment to basemap layers only.
+   * Custom gas station markers are DOM overlays and remain unchanged.
+   */
+  function applyLightGreenMapTheme(targetMap) {
+    if (!targetMap || !targetMap.getStyle) return;
+    const style = targetMap.getStyle();
+    const layers = (style && style.layers) || [];
+
+    layers.forEach((layer) => {
+      const id = layer.id;
+      const type = layer.type;
+
+      try {
+        if (type === "background") {
+          targetMap.setPaintProperty(id, "background-color", "#e9f7e9");
+          targetMap.setPaintProperty(id, "background-opacity", 0.9);
+          return;
+        }
+
+        if (type === "fill") {
+          targetMap.setPaintProperty(id, "fill-color", "#d6efd6");
+          targetMap.setPaintProperty(id, "fill-opacity", 0.72);
+          return;
+        }
+
+        if (type === "line") {
+          targetMap.setPaintProperty(id, "line-color", "#a7d4a7");
+          targetMap.setPaintProperty(id, "line-opacity", 0.68);
+          return;
+        }
+
+        if (type === "symbol") {
+          targetMap.setPaintProperty(id, "icon-color", "#76b676");
+          targetMap.setPaintProperty(id, "text-color", "#4f8f4f");
+          targetMap.setPaintProperty(id, "icon-opacity", 0.82);
+          targetMap.setPaintProperty(id, "text-opacity", 0.82);
+          return;
+        }
+
+        if (type === "circle") {
+          targetMap.setPaintProperty(id, "circle-color", "#7abb7a");
+          targetMap.setPaintProperty(id, "circle-stroke-color", "#4e934e");
+          targetMap.setPaintProperty(id, "circle-opacity", 0.8);
+          targetMap.setPaintProperty(id, "circle-stroke-opacity", 0.8);
+          return;
+        }
+
+        if (type === "fill-extrusion") {
+          targetMap.setPaintProperty(id, "fill-extrusion-color", "#cde8cd");
+          targetMap.setPaintProperty(id, "fill-extrusion-opacity", 0.7);
+          return;
+        }
+
+        if (type === "raster") {
+          targetMap.setPaintProperty(id, "raster-opacity", 0.72);
+          targetMap.setPaintProperty(id, "raster-saturation", -0.35);
+          targetMap.setPaintProperty(id, "raster-brightness-min", 0.15);
+          targetMap.setPaintProperty(id, "raster-brightness-max", 0.95);
+          return;
+        }
+
+        if (type === "hillshade") {
+          targetMap.setPaintProperty(id, "hillshade-highlight-color", "#d7f0d7");
+          targetMap.setPaintProperty(id, "hillshade-shadow-color", "#8fbe8f");
+          targetMap.setPaintProperty(id, "hillshade-accent-color", "#b6ddb6");
+        }
+      } catch (_err) {
+        // Ignore unsupported paint properties on specific style layers.
+      }
+    });
+  }
+
+  function easeOutCubic(t) {
+    return 1 - Math.pow(1 - t, 3);
+  }
+
+  function configureMapMotion(targetMap, containerEl) {
+    if (!targetMap) return;
+
+    if (targetMap.scrollZoom) {
+      targetMap.scrollZoom.setWheelZoomRate(1 / 700);
+      targetMap.scrollZoom.setZoomRate(1 / 110);
+    }
+
+    if (targetMap.dragPan) {
+      targetMap.dragPan.enable({
+        linearity: 0.25,
+        easing: easeOutCubic,
+        deceleration: 2200,
+        maxSpeed: 1400,
+      });
+    }
+
+    if (containerEl) {
+      const setNavigating = () => containerEl.classList.add("map__surface--navigating");
+      const clearNavigating = () =>
+        requestAnimationFrame(() =>
+          containerEl.classList.remove("map__surface--navigating")
+        );
+
+      targetMap.on("movestart", setNavigating);
+      targetMap.on("zoomstart", setNavigating);
+      targetMap.on("moveend", clearNavigating);
+      targetMap.on("zoomend", clearNavigating);
+    }
+  }
+
   function fetchGasStations(token, center, limit) {
     const url = new URL(
       "https://api.mapbox.com/search/searchbox/v1/category/gas_station"
@@ -192,6 +300,11 @@
     });
 
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
+    configureMapMotion(map, container);
+
+    map.on("load", () => {
+      applyLightGreenMapTheme(map);
+    });
 
     map.on("click", () => {
       if (typeof window.closeStationSheet === "function") {
