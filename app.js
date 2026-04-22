@@ -344,10 +344,6 @@ function openStationSheet(placeOrKey) {
       noteEl.hidden = noteParts.length === 0;
     }
 
-    const starCount =
-      tier === "green" ? 5 : tier === "yellow" ? 3 : tier === "red" ? 2 : 4;
-    renderStars($("#station-stars"), starCount);
-
     setStationSheetPriceTier(tier || null);
     setStationSheetMascotTier(tier || "yellow");
 
@@ -363,7 +359,6 @@ function openStationSheet(placeOrKey) {
     $("#station-name").textContent = data.name;
     $("#station-price").textContent = data.price;
     $("#station-badge").textContent = data.badge;
-    renderStars($("#station-stars"), data.stars);
     setStationSheetMascotTier(data.mapTier || "yellow");
     sheet.dataset.mode = "demo";
     sheet.dataset.station = key;

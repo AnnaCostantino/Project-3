@@ -14,6 +14,14 @@
     url("fonts/DiatypeVariable.woff2") format("woff2");
 }
 
+@font-face {
+  font-family: "Diatype";
+  font-weight: 700 900;
+  font-style: normal;
+  font-display: swap;
+  src: url("fonts/ABCDiatypeEdu-Bold.woff2") format("woff2");
+}
+
 :root {
   --green: #1ebe2c;
   --green-dark: #0d9818;
@@ -99,6 +107,7 @@ body {
   color: var(--green-dark);
   margin: 0 auto 0.12rem;
   display: block;
+  transform: translateX(6px);
 }
 
 .splash__title {
@@ -369,7 +378,7 @@ body {
 .sheet__title {
   margin: 0 0 0.35rem;
   font-size: 15px;
-  font-weight: 500;
+  font-weight: 700;
   text-align: center;
   line-height: 1.25;
 }
@@ -378,8 +387,13 @@ body {
   margin: 0;
   text-align: center;
   font-size: 20px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--red);
+}
+
+#station-sheet #station-name,
+#station-sheet #station-price {
+  font-weight: 700;
 }
 
 .sheet__badge {
@@ -437,8 +451,8 @@ body {
 }
 
 .sheet__mascot--green .sheet__mascot-icon--green,
-.sheet__mascot--yellow .sheet__mascot-icon--red,
-.sheet__mascot--red .sheet__mascot-icon--yellow {
+.sheet__mascot--yellow .sheet__mascot-icon--yellow,
+.sheet__mascot--red .sheet__mascot-icon--red {
   display: block;
 }
 
@@ -630,7 +644,7 @@ body {
 .view__title {
   margin: 0;
   font-size: 1.25rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 /* Filters list */
@@ -751,7 +765,7 @@ body {
 .review-card h3 {
   margin: 0 0 0.25rem;
   font-size: 15px;
-  font-weight: 500;
+  font-weight: 700;
 }
 
 .review-card__more {
@@ -792,6 +806,7 @@ body {
 .station-profile-card__title {
   margin: 0;
   font-size: 16px;
+  font-weight: 700;
 }
 
 .station-profile-card__price {
@@ -809,6 +824,7 @@ body {
 .station-details-card h3 {
   margin: 0 0 0.6rem;
   font-size: 14px;
+  font-weight: 700;
 }
 
 .station-detail-grid {
@@ -900,7 +916,7 @@ body {
   overflow-y: auto;
   background: var(--white);
   border-radius: var(--radius-card);
-  border: 1px solid #ddd;
+  border: 6px solid var(--red);
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
   padding: 1rem 1rem 1.1rem;
 }
@@ -922,7 +938,7 @@ body {
 .modal__title {
   margin: 0 2rem 0.35rem 0;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.25;
   padding-right: 0.25rem;
 }
@@ -968,19 +984,19 @@ body {
 
 /* Tier colors on panel (direct class — reliable with #app overflow) */
 .modal__panel.modal__panel--map-green {
-  border: 2px solid var(--map-green-ring);
+  border-color: var(--map-green-ring);
   border-top: 6px solid var(--map-green-fill);
   box-shadow: 0 16px 48px rgba(13, 152, 24, 0.18);
 }
 
 .modal__panel.modal__panel--map-yellow {
-  border: 2px solid var(--map-yellow-ring);
+  border-color: var(--map-yellow-ring);
   border-top: 6px solid var(--map-yellow-fill);
   box-shadow: 0 16px 48px rgba(201, 164, 0, 0.2);
 }
 
 .modal__panel.modal__panel--map-red {
-  border: 2px solid var(--map-red-ring);
+  border-color: var(--map-red-ring);
   border-top: 6px solid var(--map-red-fill);
   box-shadow: 0 16px 48px rgba(183, 28, 28, 0.18);
 }
@@ -1088,7 +1104,7 @@ body {
 .rate-panel__title {
   margin: 0 0 0.75rem;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   text-align: center;
 }
 
