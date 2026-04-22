@@ -1,5 +1,5 @@
 /**
- * FuelFinder prototype — screen flow and station data aligned with Figma frames.
+ * KnoxFuel prototype — screen flow and station data aligned with Figma frames.
  */
 
 /** Full review text shown in “More Info” on My Reviews */
@@ -52,6 +52,11 @@ const SHEET_PRICE_TIER_CLASSES = [
   "sheet--price-yellow",
   "sheet--price-red",
 ];
+const SHEET_MASCOT_TIER_CLASSES = [
+  "sheet__mascot--green",
+  "sheet__mascot--yellow",
+  "sheet__mascot--red",
+];
 
 function setStationSheetPriceTier(tierOrNull) {
   const sheet = $("#station-sheet");
@@ -59,6 +64,13 @@ function setStationSheetPriceTier(tierOrNull) {
   if (tierOrNull) {
     sheet.classList.add(`sheet--price-${tierOrNull}`);
   }
+}
+
+function setStationSheetMascotTier(tierOrNull) {
+  const mascot = $("#station-mascot");
+  if (!mascot) return;
+  SHEET_MASCOT_TIER_CLASSES.forEach((c) => mascot.classList.remove(c));
+  mascot.classList.add(`sheet__mascot--${tierOrNull || "yellow"}`);
 }
 
 const STATIONS = {
@@ -153,8 +165,8 @@ function showView(id) {
     el.classList.toggle("is-hidden", !on);
     el.setAttribute("aria-hidden", on ? "false" : "true");
   });
-  if (id === "view-map" && window.FuelFinderMapbox) {
-    window.FuelFinderMapbox.onViewShown();
+  if (id === "view-map" && window.KnoxFuelMapbox) {
+    window.KnoxFuelMapbox.onViewShown();
   }
 }
 
@@ -278,11 +290,12 @@ function openStationSheet(placeOrKey) {
 
   if (isMapboxFeature) {
     const p = placeOrKey.properties;
-    const meta = placeOrKey._fuelFinderMeta || {};
+    const meta = placeOrKey._knoxFuelMeta || {};
     const price = meta.pricePerGal;
     const tier = meta.tier;
 
-    $("#station-name").textContent = p.name || "Gas station";
+    const displayName = p.name_preferred || p.name || "Gas station";
+    $("#station-name").textContent = displayName;
     if (price != null && !Number.isNaN(Number(price))) {
       $("#station-price").textContent = `$${Number(price).toFixed(2)}/gal`;
     } else {
@@ -293,14 +306,42 @@ function openStationSheet(placeOrKey) {
       (tier && MAPBOX_TIER_BADGE[tier]) ||
       MAPBOX_TIER_BADGE.yellow;
 
-    const addr =
-      p.full_address || p.place_formatted || p.address || "";
+    const streetAddr =
+      p.address ||
+      ((p.context &&
+        p.context.address &&
+        (p.context.address.name ||
+          [
+            p.context.address.address_number,
+            p.context.address.street_name,
+          ]
+            .filter(Boolean)
+            .join(" "))) ||
+        "");
+    const brandStr =
+      Array.isArray(p.brand) && p.brand.length ? p.brand.join(" · ") : "";
+    const catStr =
+      Array.isArray(p.poi_category) && p.poi_category.length
+        ? p.poi_category
+            .filter((c) => !/^gas[\s_-]*station$/i.test(String(c || "").trim()))
+            .join(", ")
+        : "";
+    const ctx = p.context || {};
+    const areaHint = [ctx.locality, ctx.place, ctx.region]
+      .map((layer) => (layer && layer.name ? layer.name : ""))
+      .filter(Boolean)
+      .filter((v, i, a) => a.indexOf(v) === i)
+      .join(", ");
+    const noteParts = [];
+    if (streetAddr) noteParts.push(streetAddr);
+    else if (areaHint) noteParts.push(areaHint);
+    if (brandStr) noteParts.push(brandStr);
+    if (catStr) noteParts.push(catStr);
+
     const noteEl = $("#station-price-note");
     if (noteEl) {
-      noteEl.textContent = addr
-        ? `${addr} · Estimated for demo; color = price vs. other pins on this map.`
-        : "Estimated for demo; color = price vs. other pins on this map.";
-      noteEl.hidden = false;
+      noteEl.textContent = noteParts.join(" · ");
+      noteEl.hidden = noteParts.length === 0;
     }
 
     const starCount =
@@ -308,6 +349,7 @@ function openStationSheet(placeOrKey) {
     renderStars($("#station-stars"), starCount);
 
     setStationSheetPriceTier(tier || null);
+    setStationSheetMascotTier(tier || "yellow");
 
     const coords = placeOrKey.geometry.coordinates;
     sheet.dataset.mode = "mapbox";
@@ -322,6 +364,7 @@ function openStationSheet(placeOrKey) {
     $("#station-price").textContent = data.price;
     $("#station-badge").textContent = data.badge;
     renderStars($("#station-stars"), data.stars);
+    setStationSheetMascotTier(data.mapTier || "yellow");
     sheet.dataset.mode = "demo";
     sheet.dataset.station = key;
     delete sheet.dataset.lng;
@@ -507,35 +550,60 @@ function init() {
     showView("view-map");
   });
 
+  $("#btn-map-reset")?.addEventListener("click", () => {
+    if (window.KnoxFuelMapbox && typeof window.KnoxFuelMapbox.resetToDefaultView === "function") {
+      window.KnoxFuelMapbox.resetToDefaultView();
+    }
+  });
+
   $("#close-station").addEventListener("click", closeStationSheet);
 
-  $("#btn-filters").addEventListener("click", () => {
-    closeStationSheet();
-    showView("view-filters");
+  document.querySelectorAll(".btn-filters").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      closeStationSheet();
+      const rateView = $("#view-rate");
+      if (rateView && !rateView.classList.contains("is-hidden")) {
+        closeRateOverlay();
+      }
+      showView("view-filters");
+    });
   });
 
-  $("#btn-profile").addEventListener("click", () => {
-    closeStationSheet();
-    showView("view-reviews");
+  document.querySelectorAll(".btn-nav-map").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      closeStationSheet();
+      const rateView = $("#view-rate");
+      if (rateView && !rateView.classList.contains("is-hidden")) {
+        closeRateOverlay();
+      }
+      showView("view-map");
+    });
   });
 
-  $("#fab-profile-from-filters").addEventListener("click", () => {
-    showView("view-reviews");
+  document.querySelectorAll(".btn-nav-profile").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (btn.disabled) return;
+      closeStationSheet();
+      const rateView = $("#view-rate");
+      if (rateView && !rateView.classList.contains("is-hidden")) {
+        closeRateOverlay();
+      }
+      showView("view-reviews");
+    });
   });
 
   document.querySelectorAll("[data-back]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const target = btn.getAttribute("data-back");
-      if (target === "map") showView("view-map");
+      if (target === "map") {
+        closeStationSheet();
+        const rateView = $("#view-rate");
+        if (rateView && !rateView.classList.contains("is-hidden")) {
+          closeRateOverlay();
+        }
+        showView("view-map");
+      }
       if (target === "filters") showView("view-filters");
-    });
-  });
-
-  document.querySelectorAll("[data-goto]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const g = btn.getAttribute("data-goto");
-      if (g === "reviews-from-rate") showView("view-reviews");
-      if (g === "reviews") showView("view-reviews");
     });
   });
 
@@ -576,14 +644,6 @@ function init() {
     closeRateOverlay();
   });
 
-  $("#view-rate [data-back='map']")?.addEventListener("click", () => {
-    closeRateOverlay();
-  });
-
-  $("#view-rate [data-goto='reviews-from-rate']")?.addEventListener("click", () => {
-    closeRateOverlay();
-    showView("view-reviews");
-  });
 }
 
 document.addEventListener("DOMContentLoaded", init);

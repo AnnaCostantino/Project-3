@@ -9,8 +9,8 @@
  * Turn on URL restrictions for your token so it only works on your deployed domain.
  */
 (function () {
-  var base = window.FUEL_FINDER_CONFIG || {};
-  window.FUEL_FINDER_CONFIG = Object.assign({}, base, {
+  var base = window.KNOX_FUEL_CONFIG || {};
+  window.KNOX_FUEL_CONFIG = Object.assign({}, base, {
     mapboxAccessToken: "",
   });
 })();

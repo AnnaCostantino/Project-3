@@ -7,7 +7,7 @@
   let mapReady = false;
 
   function getConfig() {
-    return window.FUEL_FINDER_CONFIG || {};
+    return window.KNOX_FUEL_CONFIG || {};
   }
 
   function haversineKm(lat1, lng1, lat2, lng2) {
@@ -210,14 +210,122 @@
     }
   }
 
-  function fetchGasStations(token, center, limit) {
+  /** @param {{ lng: number, lat: number }} center */
+  function bboxStringFromCenterKm(center, halfWidthKm) {
+    const lat = center.lat;
+    const cosLat = Math.cos((lat * Math.PI) / 180);
+    const dLat = halfWidthKm / 111;
+    const dLng = halfWidthKm / (111 * Math.max(0.2, cosLat));
+    const minLng = center.lng - dLng;
+    const minLat = center.lat - dLat;
+    const maxLng = center.lng + dLng;
+    const maxLat = center.lat + dLat;
+    return `${minLng},${minLat},${maxLng},${maxLat}`;
+  }
+
+  /**
+   * Destination point given start, initial bearing (deg), and distance (km).
+   * @returns {{ lng: number, lat: number }}
+   */
+  function destinationPointKm(lat, lng, bearingDeg, distanceKm) {
+    const R = 6371;
+    const δ = distanceKm / R;
+    const θ = (bearingDeg * Math.PI) / 180;
+    const φ1 = (lat * Math.PI) / 180;
+    const λ1 = (lng * Math.PI) / 180;
+    const sinφ1 = Math.sin(φ1);
+    const cosφ1 = Math.cos(φ1);
+    const sinδ = Math.sin(δ);
+    const cosδ = Math.cos(δ);
+    const sinφ2 = sinφ1 * cosδ + cosφ1 * sinδ * Math.cos(θ);
+    const φ2 = Math.asin(sinφ2);
+    const y = Math.sin(θ) * sinδ * cosφ1;
+    const x = cosδ - sinφ1 * sinφ2;
+    const λ2 = λ1 + Math.atan2(y, x);
+    const lat2 = (φ2 * 180) / Math.PI;
+    let lng2 = (λ2 * 180) / Math.PI;
+    lng2 = ((((lng2 + 540) % 360) + 360) % 360) - 180;
+    return { lat: lat2, lng: lng2 };
+  }
+
+  /**
+   * Build proximity bias points: ring 0 = center; each km>0 adds 8 compass offsets.
+   * @param {{ lng: number, lat: number }} center
+   * @param {number[]} ringsKm e.g. [0, 4, 8]
+   */
+  function buildProximityProbes(center, ringsKm) {
+    const probes = [];
+    const seen = new Set();
+    function pushProbe(p) {
+      const key = `${p.lng.toFixed(5)},${p.lat.toFixed(5)}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      probes.push(p);
+    }
+
+    (ringsKm || [0]).forEach((km) => {
+      if (km === 0) {
+        pushProbe({ lng: center.lng, lat: center.lat });
+        return;
+      }
+      for (let b = 0; b < 8; b++) {
+        const p = destinationPointKm(center.lat, center.lng, b * 45, km);
+        pushProbe(p);
+      }
+    });
+    return probes;
+  }
+
+  function featureDedupeKey(f) {
+    const id = f.properties && f.properties.mapbox_id;
+    if (id) return `id:${id}`;
+    const c = f.geometry && f.geometry.coordinates;
+    if (!c) return `x:${Math.random()}`;
+    return `ll:${c[0].toFixed(5)},${c[1].toFixed(5)}`;
+  }
+
+  /**
+   * Merge several category responses: unique by mapbox_id, closest-to-center first, then cap.
+   */
+  function mergeCategoryResults(featureCollections, center, maxPins) {
+    const byKey = new Map();
+    featureCollections.forEach((fc) => {
+      if (!fc || !fc.features) return;
+      fc.features.forEach((f) => {
+        if (!f.geometry || !f.geometry.coordinates) return;
+        const k = featureDedupeKey(f);
+        const [lng, lat] = f.geometry.coordinates;
+        const dist = haversineKm(center.lat, center.lng, lat, lng);
+        const prev = byKey.get(k);
+        if (!prev || dist < prev.dist) {
+          byKey.set(k, { feature: f, dist });
+        }
+      });
+    });
+
+    const merged = Array.from(byKey.values())
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, Math.max(1, maxPins))
+      .map((x) => x.feature);
+
+    return {
+      type: "FeatureCollection",
+      features: merged,
+    };
+  }
+
+  function fetchGasStationCategoryOnce(token, proximity, limit, bboxStr) {
     const url = new URL(
       "https://api.mapbox.com/search/searchbox/v1/category/gas_station"
     );
     url.searchParams.set("access_token", token);
-    url.searchParams.set("proximity", `${center.lng},${center.lat}`);
+    url.searchParams.set("proximity", `${proximity.lng},${proximity.lat}`);
     url.searchParams.set("limit", String(Math.min(25, Math.max(1, limit || 25))));
     url.searchParams.set("language", "en");
+    url.searchParams.set("country", "US");
+    if (bboxStr) {
+      url.searchParams.set("bbox", bboxStr);
+    }
     return fetch(url.toString()).then((r) => {
       if (!r.ok) {
         return r.text().then((t) => {
@@ -226,6 +334,46 @@
       }
       return r.json();
     });
+  }
+
+  /**
+   * Several proximity-biased category calls (25 results each) to cover more POIs than a single request.
+   */
+  async function fetchGasStationsMerged(token, center, cfg) {
+    const perReq = Math.min(25, Math.max(1, cfg.gasStationLimit || 25));
+    const maxPins = Math.min(200, Math.max(10, cfg.gasStationMaxPins || 100));
+    const rings = Array.isArray(cfg.gasStationProximityRingsKm)
+      ? cfg.gasStationProximityRingsKm
+      : [0, 4, 8];
+    const halfKm =
+      cfg.gasStationBboxHalfKm != null ? Number(cfg.gasStationBboxHalfKm) : 22;
+    const bboxStr = Number.isFinite(halfKm) && halfKm > 0
+      ? bboxStringFromCenterKm(center, halfKm)
+      : "";
+
+    const probes = buildProximityProbes(center, rings);
+    const batchSize = 5;
+    const collections = [];
+
+    for (let i = 0; i < probes.length; i += batchSize) {
+      const batch = probes.slice(i, i + batchSize);
+      const settled = await Promise.allSettled(
+        batch.map((p) => fetchGasStationCategoryOnce(token, p, perReq, bboxStr))
+      );
+      settled.forEach((s) => {
+        if (s.status === "fulfilled" && s.value && s.value.features) {
+          collections.push(s.value);
+        } else if (s.status === "rejected") {
+          console.warn("Gas station category request failed:", s.reason);
+        }
+      });
+      if (i + batchSize < probes.length) {
+        await new Promise((r) => setTimeout(r, 150));
+      }
+    }
+
+    const merged = mergeCategoryResults(collections, center, maxPins);
+    return merged;
   }
 
   function addMarkersFromGeoJSON(fc, center) {
@@ -243,14 +391,18 @@
       const el = document.createElement("button");
       el.type = "button";
       el.className = `map-marker map-marker--${tier}`;
+      const labelName =
+        (feature.properties &&
+          (feature.properties.name_preferred || feature.properties.name)) ||
+        "Gas station";
       el.setAttribute(
         "aria-label",
-        `${(feature.properties && feature.properties.name) || "Gas station"}, $${price.toFixed(2)} per gallon`
+        `${labelName}, $${price.toFixed(2)} per gallon`
       );
 
       el.addEventListener("click", (e) => {
         e.stopPropagation();
-        feature._fuelFinderMeta = {
+        feature._knoxFuelMeta = {
           distKm: dist,
           tier,
           pricePerGal: price,
@@ -296,7 +448,7 @@
       style: "mapbox://styles/mapbox/streets-v12",
       center: [center.lng, center.lat],
       zoom,
-      attributionControl: true,
+      attributionControl: false,
     });
 
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
@@ -312,7 +464,8 @@
       }
     });
 
-    fetchGasStations(token, center, CFG.gasStationLimit)
+    showMapStatus("Loading gas stations from Mapbox…");
+    fetchGasStationsMerged(token, center, CFG)
       .then((data) => {
         if (data && data.features && data.features.length) {
           addMarkersFromGeoJSON(data, center);
@@ -339,7 +492,19 @@
     }
   }
 
-  window.FuelFinderMapbox = {
+  function resetToDefaultView() {
+    if (!map || !mapReady) return;
+    const CFG = getConfig();
+    const c = CFG.mapCenter || { lng: -83.9207, lat: 35.9606 };
+    const z = CFG.mapZoom != null ? CFG.mapZoom : 11;
+    map.easeTo({
+      center: [c.lng, c.lat],
+      zoom: z,
+      duration: 900,
+    });
+  }
+
+  window.KnoxFuelMapbox = {
     initWhenReady() {
       if (mapReady) {
         resize();
@@ -353,8 +518,10 @@
       if (mapReady) {
         setTimeout(resize, 100);
       } else {
-        window.FuelFinderMapbox.initWhenReady();
+        window.KnoxFuelMapbox.initWhenReady();
       }
     },
+
+    resetToDefaultView,
   };
 })();
