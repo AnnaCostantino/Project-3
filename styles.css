@@ -104,6 +104,24 @@ body {
   position: relative;
 }
 
+/* Real phones / narrow viewports: full-screen app; desktop keeps centered “device” frame */
+@media (max-width: 600px) {
+  .phone-shell {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .app {
+    width: 100%;
+    max-width: none;
+    min-height: 100dvh;
+    min-height: 100svh;
+    max-height: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
 .view {
   position: absolute;
   inset: 0;
