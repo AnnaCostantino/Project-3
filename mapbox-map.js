@@ -10,6 +10,61 @@
     return window.KNOX_FUEL_CONFIG || {};
   }
 
+  /**
+   * Search Box /reverse: first hit with `properties.address` (number + street per API docs)
+   * or `context.address` parts. Tries `types=address` first, then an unrestricted query.
+   * @param {number} lng
+   * @param {number} lat
+   * @returns {Promise<string | null>}
+   */
+  function fetchStreetLineFromSearchBoxReverse(lng, lat) {
+    const token = (getConfig().mapboxAccessToken || "").trim();
+    if (!token) return Promise.resolve(null);
+
+    function pickLine(fc) {
+      if (!fc || !fc.features || !fc.features.length) return null;
+      for (let i = 0; i < fc.features.length; i++) {
+        const p = fc.features[i].properties;
+        if (!p) continue;
+        const addr = p.address;
+        if (addr && String(addr).trim()) return String(addr).trim();
+      }
+      for (let i = 0; i < fc.features.length; i++) {
+        const p = fc.features[i].properties;
+        if (!p || !p.context || !p.context.address) continue;
+        const a = p.context.address;
+        const n = a.address_number;
+        const st = a.street_name;
+        if (n != null && String(n).trim() !== "" || (st && String(st).trim() !== "")) {
+          return [n, st]
+            .filter((x) => x != null && String(x).trim() !== "")
+            .map((x) => String(x).trim())
+            .join(" ");
+        }
+        if (a.name && String(a.name).trim()) return String(a.name).trim();
+      }
+      return null;
+    }
+
+    function doReverse(extraTypes) {
+      const url = new URL("https://api.mapbox.com/search/searchbox/v1/reverse");
+      url.searchParams.set("longitude", String(lng));
+      url.searchParams.set("latitude", String(lat));
+      url.searchParams.set("limit", "8");
+      url.searchParams.set("language", "en");
+      url.searchParams.set("country", "US");
+      url.searchParams.set("access_token", token);
+      if (extraTypes) url.searchParams.set("types", extraTypes);
+      return fetch(url.toString())
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => pickLine(data));
+    }
+
+    return doReverse("address")
+      .then((line) => (line ? line : doReverse(null)))
+      .catch(() => null);
+  }
+
   function haversineKm(lat1, lng1, lat2, lng2) {
     const R = 6371;
     const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -520,6 +575,11 @@
       } else {
         window.KnoxFuelMapbox.initWhenReady();
       }
+    },
+
+    /** Search Box reverse geocode — number + street when available. */
+    fetchStreetLineAt(lng, lat) {
+      return fetchStreetLineFromSearchBoxReverse(lng, lat);
     },
 
     resetToDefaultView,

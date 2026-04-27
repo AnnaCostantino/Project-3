@@ -33,6 +33,18 @@
     url("fonts/GrezTRIAL-Regular.otf") format("opentype");
 }
 
+/* Rund Display TRIAL (Medium) — splash wordmark "KnoxFuel" */
+@font-face {
+  font-family: "Rund Display TRIAL";
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src:
+    local("RundDisplayTRIAL-Medium"),
+    local("Rund Display TRIAL Medium"),
+    url("fonts/RundDisplayTRIAL-Medium.otf") format("opentype");
+}
+
 :root {
   --green: #1ebe2c;
   --green-dark: #0d9818;
@@ -47,6 +59,7 @@
   --radius-btn: 4px;
   --font-fallback: system-ui, sans-serif;
   --font-diatype: "Diatype", "ABC Diatype", var(--font-fallback);
+  --font-knox-title: "Rund Display TRIAL", "Grez", "Inter", system-ui, sans-serif;
   --font: var(--font-diatype);
   /* Map marker palette (same as .map-marker--*) */
   --map-green-fill: #1ebe2c;
@@ -123,9 +136,9 @@ body {
 
 .splash__title {
   margin: 0;
-  font-family: "Grez", "Inter", system-ui, sans-serif;
+  font-family: var(--font-knox-title);
   font-size: clamp(2rem, 10vw, 2.5rem);
-  font-weight: 700;
+  font-weight: 500;
   font-style: normal;
   line-height: 1.08;
   color: var(--green-dark);
@@ -436,6 +449,8 @@ body {
   display: none;
   width: 100%;
   height: 100%;
+  /* Art is left- and bottom-heavy in the viewBox; nudge so the pump reads centered */
+  transform: translate(3.5px, -1.5px);
 }
 
 .sheet__mascot-icon path,
@@ -712,11 +727,25 @@ body {
   margin-bottom: 0.35rem;
 }
 
-.filter-accordion.is-open .filter-row {
-  border-radius: var(--radius-btn) var(--radius-btn) 0 0;
-  margin-bottom: 0;
-  border-color: var(--green-dark);
+.filter-accordion.is-open {
+  border: 1px solid var(--green-dark);
   box-shadow: 0 0 0 1px rgba(13, 152, 24, 0.2);
+  border-radius: var(--radius-btn);
+  overflow: hidden;
+}
+
+.filter-accordion.is-open .filter-row {
+  border: none;
+  border-radius: 0;
+  margin-bottom: 0;
+  border-bottom: 1px solid #e0e0e0;
+  box-shadow: none;
+}
+
+.filter-accordion.is-open .filter-dropdown {
+  margin: 0;
+  border: none;
+  border-radius: 0;
 }
 
 .filter-accordion.is-open .chev {
@@ -751,7 +780,6 @@ body {
   font-size: 15px;
   cursor: pointer;
   border-radius: 6px;
-  transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .filter-search-btn {
@@ -1271,14 +1299,13 @@ body {
     background: rgba(0, 0, 0, 0.06);
   }
 
-  .filter-row:hover {
+  .filter-accordion:not(.is-open) .filter-row:hover {
     border-color: var(--green-dark);
     background: #f7fff8;
   }
 
-  .radio-row:hover {
+  .filter-accordion.is-open .filter-row:hover {
     background: #f7fff8;
-    box-shadow: inset 0 0 0 1px rgba(13, 152, 24, 0.22);
   }
 
   .link-more:hover,

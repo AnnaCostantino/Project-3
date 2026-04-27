@@ -278,6 +278,246 @@ function fillReviewStars() {
 }
 
 /**
+ * Mapbox helpers: house number + street only, and readable capitalization.
+ */
+function escapeForRegExp(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function collectPoiNameTokens(p) {
+  const out = new Set();
+  if (!p) return out;
+  [p.name, p.name_preferred]
+    .filter(Boolean)
+    .forEach((x) => out.add(String(x).trim()));
+  (Array.isArray(p.brand) ? p.brand : []).forEach((b) => {
+    const t = String(b).trim();
+    if (t) out.add(t);
+  });
+  return out;
+}
+
+function stripBrandAndNameFromAddressLine(line, p) {
+  let s = String(line || "").trim();
+  if (!s) return "";
+  for (const label of collectPoiNameTokens(p)) {
+    if (label.length < 2) continue;
+    const esc = escapeForRegExp(label);
+    s = s
+      .replace(new RegExp(`^${esc}\\s*[,;|·/]\\s*`, "i"), "")
+      .replace(new RegExp(`^${esc}\\s*-\\s*`, "i"), "")
+      .replace(new RegExp(`^${esc}\\s+`, "i"), "")
+      .replace(new RegExp(`\\s*[,;|·/]\\s*${esc}$`, "i"), "")
+      .replace(new RegExp(`\\s*-\\s*${esc}$`, "i"), "")
+      .trim();
+  }
+  return s;
+}
+
+const STREET_DIR_TOKENS = {
+  n: "N",
+  s: "S",
+  e: "E",
+  w: "W",
+  ne: "NE",
+  nw: "NW",
+  se: "SE",
+  sw: "SW",
+};
+
+const STREET_SUFFIX_TOKENS = {
+  st: "St",
+  str: "St",
+  ave: "Ave",
+  avenue: "Avenue",
+  rd: "Rd",
+  road: "Road",
+  dr: "Dr",
+  drive: "Drive",
+  ln: "Ln",
+  lane: "Lane",
+  blvd: "Blvd",
+  boulevard: "Boulevard",
+  pkwy: "Pkwy",
+  pky: "Pkwy",
+  pike: "Pike",
+  hwy: "Hwy",
+  highway: "Highway",
+  trl: "Trl",
+  trail: "Trail",
+  cir: "Cir",
+  circle: "Circle",
+  ct: "Ct",
+  court: "Court",
+  pl: "Pl",
+  place: "Place",
+  way: "Way",
+  ter: "Ter",
+  terrace: "Terrace",
+  path: "Path",
+  cove: "Cove",
+  xing: "Xing",
+  fwy: "Fwy",
+  loop: "Loop",
+  run: "Run",
+  pass: "Pass",
+  vis: "Vis",
+  sq: "Sq",
+  al: "Al",
+  aly: "Aly",
+  cv: "Cv",
+  holw: "Holw",
+  bnd: "Bnd",
+  br: "Br",
+  brg: "Brg",
+  ext: "Ext",
+  route: "Route",
+  rte: "Rte",
+  vly: "Vly",
+  xrd: "Xrd",
+  jr: "Jr",
+  sr: "Sr",
+};
+
+/**
+ * @param {string} w — single word (no internal hyphen; hyphen segments handled by caller)
+ */
+function capitalizeStreetWord(w) {
+  if (!w) return "";
+  if (/^(\d+)(st|nd|rd|th)$/i.test(w)) {
+    return w.replace(/^(\d+)(st|nd|rd|th)$/i, (_, n, suf) => n + suf.toLowerCase());
+  }
+  if (/^\d+([A-Za-z]+)?$/.test(w) && /^\d/.test(w) && w.length <= 4) {
+    return w;
+  }
+  const noDot = w.replace(/\.+$/g, "");
+  const lower = noDot.toLowerCase();
+  const key = lower.replace(/\./g, "");
+  if (STREET_DIR_TOKENS[key]) return STREET_DIR_TOKENS[key];
+  if (STREET_SUFFIX_TOKENS[key]) return STREET_SUFFIX_TOKENS[key];
+  if (lower.length > 2 && lower.startsWith("mc")) {
+    return "Mc" + lower.charAt(2).toUpperCase() + lower.slice(3);
+  }
+  if (lower.length > 1 && (lower[0] === "o" && (lower[1] === "'" || lower[1] === "’"))) {
+    return "O’" + lower.charAt(2).toUpperCase() + lower.slice(3);
+  }
+  return w.charAt(0).toUpperCase() + lower.slice(1);
+}
+
+/**
+ * US-style number + street line: title case, directions N/S/…, common suffixes (St, Ave, …).
+ */
+function formatNumberStreetCasing(s) {
+  if (!s) return "";
+  return s
+    .trim()
+    .split(/\s+/)
+    .map((word) => {
+      if (word.includes("-") && /^\d/.test(word) === false) {
+        return word
+          .split("-")
+          .map((h) => capitalizeStreetWord(h))
+          .join("-");
+      }
+      if (/^(\d+)([A-Za-z]+)/.test(word)) {
+        const m = word.match(/^(\d+)([A-Za-z]+)(.*)/);
+        if (m) return m[1] + m[2].toUpperCase() + (m[3] || "");
+      }
+      return capitalizeStreetWord(word);
+    })
+    .join(" ");
+}
+
+/**
+ * Mapbox `context` locality / place / region / postcode names (not part of a street line).
+ * @param {object} p — feature.properties
+ * @returns {Set<string>} lowercased names
+ */
+function contextAdministrativeNames(p) {
+  const s = new Set();
+  const ctx = p && p.context;
+  if (!ctx || typeof ctx !== "object") return s;
+  [
+    "locality",
+    "place",
+    "region",
+    "region_group",
+    "neighborhood",
+    "district",
+    "postcode",
+    "country",
+  ].forEach((key) => {
+    const layer = ctx[key];
+    if (layer && layer.name != null) {
+      s.add(String(layer.name).trim().toLowerCase());
+    }
+  });
+  if (p.brand) {
+    (Array.isArray(p.brand) ? p.brand : [p.brand]).forEach((b) => {
+      if (b) s.add(String(b).trim().toLowerCase());
+    });
+  }
+  return s;
+}
+
+/**
+ * True if the string is only a city/region/postal label, not a street (e.g. "Knoxville").
+ * @param {string} line
+ * @param {object} p — feature.properties
+ */
+function isNonStreetPlacenameOnly(line, p) {
+  const t = String(line || "")
+    .trim()
+    .toLowerCase();
+  if (!t) return true;
+  if (contextAdministrativeNames(p).has(t)) return true;
+  if (/^\d{5}(-\d{4})?$/.test(t)) return true;
+  return false;
+}
+
+/**
+ * House number and street name only. Omits city / region. Uses `address_number` +
+ * `street_name` when available; otherwise the first segment of `place_formatted` /
+ * `full_address` / `address` (strips POI/brand, rejects lone city/region).
+ * @param {object} p — feature.properties from Mapbox
+ */
+function mapboxNumberAndStreetLine(p) {
+  if (!p) return "";
+  const ctxAddr = p.context && p.context.address;
+  const num = ctxAddr && ctxAddr.address_number;
+  const st = ctxAddr && ctxAddr.street_name;
+  const fromStruct = [num, st]
+    .filter((x) => x != null && String(x).trim() !== "")
+    .map((x) => String(x).trim())
+    .join(" ");
+  if (fromStruct) {
+    const s = formatNumberStreetCasing(fromStruct);
+    return isNonStreetPlacenameOnly(s, p) ? "" : s;
+  }
+
+  const raw =
+    (p.place_formatted && String(p.place_formatted).trim()) ||
+    (p.full_address && String(p.full_address).trim()) ||
+    (p.address && String(p.address).trim()) ||
+    (ctxAddr && ctxAddr.name && String(ctxAddr.name).trim()) ||
+    "";
+  if (!raw) return "";
+  const parts = raw
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
+  for (const seg of parts) {
+    const line = formatNumberStreetCasing(
+      stripBrandAndNameFromAddressLine(seg, p)
+    );
+    if (line && !isNonStreetPlacenameOnly(line, p)) return line;
+  }
+  return "";
+}
+
+let _stationNoteRequestSeq = 0;
+
+/**
  * @param {string | object} placeOrKey — demo key or Mapbox Search GeoJSON Feature
  */
 function openStationSheet(placeOrKey) {
@@ -306,53 +546,51 @@ function openStationSheet(placeOrKey) {
       (tier && MAPBOX_TIER_BADGE[tier]) ||
       MAPBOX_TIER_BADGE.yellow;
 
-    const streetAddr =
-      p.address ||
-      ((p.context &&
-        p.context.address &&
-        (p.context.address.name ||
-          [
-            p.context.address.address_number,
-            p.context.address.street_name,
-          ]
-            .filter(Boolean)
-            .join(" "))) ||
-        "");
-    const brandStr =
-      Array.isArray(p.brand) && p.brand.length ? p.brand.join(" · ") : "";
-    const catStr =
-      Array.isArray(p.poi_category) && p.poi_category.length
-        ? p.poi_category
-            .filter((c) => !/^gas[\s_-]*station$/i.test(String(c || "").trim()))
-            .join(", ")
-        : "";
-    const ctx = p.context || {};
-    const areaHint = [ctx.locality, ctx.place, ctx.region]
-      .map((layer) => (layer && layer.name ? layer.name : ""))
-      .filter(Boolean)
-      .filter((v, i, a) => a.indexOf(v) === i)
-      .join(", ");
-    const noteParts = [];
-    if (streetAddr) noteParts.push(streetAddr);
-    else if (areaHint) noteParts.push(areaHint);
-    if (brandStr) noteParts.push(brandStr);
-    if (catStr) noteParts.push(catStr);
-
-    const noteEl = $("#station-price-note");
-    if (noteEl) {
-      noteEl.textContent = noteParts.join(" · ");
-      noteEl.hidden = noteParts.length === 0;
-    }
-
     setStationSheetPriceTier(tier || null);
     setStationSheetMascotTier(tier || "yellow");
 
     const coords = placeOrKey.geometry.coordinates;
+    const lng = coords[0];
+    const lat = coords[1];
     sheet.dataset.mode = "mapbox";
-    sheet.dataset.lng = String(coords[0]);
-    sheet.dataset.lat = String(coords[1]);
-    sheet.dataset.mapboxId = p.mapbox_id || "";
+    sheet.dataset.lng = String(lng);
+    sheet.dataset.lat = String(lat);
+    const mapboxIdForNote = p.mapbox_id || "";
+    sheet.dataset.mapboxId = mapboxIdForNote;
     sheet.dataset.station = "";
+
+    const noteEl = $("#station-price-note");
+    const seq = ++_stationNoteRequestSeq;
+    if (noteEl) {
+      noteEl.textContent = "";
+      noteEl.hidden = true;
+    }
+
+    const applyStationNoteForMapbox = (lineFromApi) => {
+      if (_stationNoteRequestSeq !== seq) return;
+      const el = $("#station-price-note");
+      const sh = $("#station-sheet");
+      if (!el || !sh) return;
+      if (sh.classList.contains("is-hidden")) return;
+      if ((sh.dataset.mapboxId || "") !== mapboxIdForNote) return;
+      const trimmed = lineFromApi && String(lineFromApi).trim();
+      const out = trimmed
+        ? formatNumberStreetCasing(trimmed)
+        : mapboxNumberAndStreetLine(p);
+      el.textContent = out;
+      el.hidden = !out;
+    };
+
+    if (
+      window.KnoxFuelMapbox &&
+      typeof window.KnoxFuelMapbox.fetchStreetLineAt === "function"
+    ) {
+      window.KnoxFuelMapbox.fetchStreetLineAt(lng, lat).then((line) => {
+        applyStationNoteForMapbox(line);
+      });
+    } else {
+      applyStationNoteForMapbox(null);
+    }
   } else {
     const key = typeof placeOrKey === "string" ? placeOrKey : "citgo";
     const data = STATIONS[key] || STATIONS.citgo;
